@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Body, FastAPI, HTTPException, Query
 import chess
 import uuid
 from db import get_db, init_db
@@ -54,3 +54,50 @@ def get_fen(game_id: str):
         if not row:
             raise HTTPException(404, "Game not found")
         return {"fen": row["fen"]}
+
+@app.post("/move/{game_id}")
+def make_move(
+    game_id: str,
+    token: str = Query(...),
+    move: str = Body(..., embed=True)  # expects { "move": "e2e4" }
+):
+    with get_db() as db:
+        row = db.execute("SELECT * FROM games WHERE id = ?", (game_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Game not found")
+
+        board = chess.Board(row["fen"])
+
+        # Determine the player's color
+        if token == row["white_token"]:
+            player_color = chess.WHITE
+        elif token == row["black_token"]:
+            player_color = chess.BLACK
+        else:
+            raise HTTPException(403, "Invalid token")
+
+        # Check turn
+        if board.turn != player_color:
+            raise HTTPException(403, "Not your turn")
+
+        # Try to parse and apply the move
+        try:
+            move_obj = chess.Move.from_uci(move)
+        except ValueError:
+            raise HTTPException(400, "Invalid UCI move format")
+
+        if move_obj not in board.legal_moves:
+            raise HTTPException(400, "Illegal move")
+
+        board.push(move_obj)
+
+        # Save updated FEN
+        db.execute("UPDATE games SET fen = ? WHERE id = ?", (board.fen(), game_id))
+
+        return {
+            "status": "ok",
+            "new_fen": board.fen(),
+            "turn": "white" if board.turn == chess.WHITE else "black",
+            "is_game_over": board.is_game_over(),
+            "result": board.result() if board.is_game_over() else None
+        }
