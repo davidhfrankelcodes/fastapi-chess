@@ -1,7 +1,6 @@
 .env
 venv/
-!requirements.txt
-*.txt
+notes.txt
 *.log
 *.pyc
 *.pyo
