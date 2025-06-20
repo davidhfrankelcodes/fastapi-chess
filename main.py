@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 import chess
 import uuid
 from db import get_db, init_db
@@ -6,8 +6,8 @@ from db import get_db, init_db
 app = FastAPI()
 init_db()
 
-@app.post("/start_game/{username}")
-def start_game(username: str):
+@app.post("/start_game")
+def start_game():
     game_id = str(uuid.uuid4())
     white_token = str(uuid.uuid4())
     black_token = str(uuid.uuid4())
@@ -15,9 +15,9 @@ def start_game(username: str):
 
     with get_db() as db:
         db.execute("""
-        INSERT INTO games (id, fen, white_username, white_token, black_token)
-        VALUES (?, ?, ?, ?, ?)
-        """, (game_id, board.fen(), username, white_token, black_token))
+        INSERT INTO games (id, fen, white_joined, black_joined, white_token, black_token)
+        VALUES (?, ?, NULL, NULL, ?, ?)
+        """, (game_id, board.fen(), white_token, black_token))
 
     return {
         "game_id": game_id,
@@ -26,20 +26,26 @@ def start_game(username: str):
     }
 
 @app.post("/join_game/{game_id}")
-def join_game(game_id: str, username: str, token: str):
+def join_game(game_id: str, token: str = Query(...)):
     with get_db() as db:
         row = db.execute("SELECT * FROM games WHERE id = ?", (game_id,)).fetchone()
         if not row:
             raise HTTPException(404, "Game not found")
 
-        if row["black_username"] is not None:
-            raise HTTPException(400, "Game already has a black player")
+        if token == row["white_token"]:
+            if row["white_joined"] is not None:
+                raise HTTPException(400, "White already joined")
+            db.execute("UPDATE games SET white_joined = ? WHERE id = ?", ("joined", game_id))
+            return {"role": "white", "message": "White player joined"}
 
-        if token != row["black_token"]:
-            raise HTTPException(403, "Invalid join token")
+        elif token == row["black_token"]:
+            if row["black_joined"] is not None:
+                raise HTTPException(400, "Black already joined")
+            db.execute("UPDATE games SET black_joined = ? WHERE id = ?", ("joined", game_id))
+            return {"role": "black", "message": "Black player joined"}
 
-        db.execute("UPDATE games SET black_username = ? WHERE id = ?", (username, game_id))
-        return {"message": f"{username} joined as black"}
+        else:
+            raise HTTPException(403, "Invalid token")
 
 @app.get("/fen/{game_id}")
 def get_fen(game_id: str):
