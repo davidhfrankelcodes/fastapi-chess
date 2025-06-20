@@ -101,3 +101,31 @@ def make_move(
             "is_game_over": board.is_game_over(),
             "result": board.result() if board.is_game_over() else None
         }
+
+@app.get("/status/{game_id}")
+def get_status(game_id: str):
+    with get_db() as db:
+        row = db.execute("SELECT fen FROM games WHERE id = ?", (game_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Game not found")
+
+        board = chess.Board(row["fen"])
+        return {
+            "turn": "white" if board.turn == chess.WHITE else "black",
+            "is_check": board.is_check(),
+            "is_game_over": board.is_game_over(),
+            "is_checkmate": board.is_checkmate(),
+            "is_stalemate": board.is_stalemate(),
+            "result": board.result() if board.is_game_over() else None
+        }
+
+@app.get("/board/{game_id}")
+def get_board_ascii(game_id: str):
+    with get_db() as db:
+        row = db.execute("SELECT fen FROM games WHERE id = ?", (game_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Game not found")
+
+        board = chess.Board(row["fen"])
+        rows = str(board).splitlines()  # Split the ASCII board into 8 lines
+        return {"board": rows}
