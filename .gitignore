@@ -8,13 +8,5 @@ notes.txt
 __pycache__/
 *.db
 *.sqlite3
-*.egg-info/
-*.egg
-*.zip
-*.tar.gz
-*.tar.bz2
-*.tar.xz
-*.rar
-*.7z
 *.bak
-*.swp
+.pytest_cache/
