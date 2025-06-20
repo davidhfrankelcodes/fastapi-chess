@@ -1,14 +1,16 @@
 from fastapi import Body, FastAPI, HTTPException, Query
 import chess
 import uuid
-from db import get_db, init_db
+from app.db import get_db, init_db
 
 app = FastAPI()
 init_db()
 
-@app.get("/")
+
+@app.get("/", include_in_schema=False)
 def root():
     return {"message": "Welcome to your FastAPI Chess Server!"}
+
 
 @app.post("/start_game")
 def start_game():
@@ -29,35 +31,42 @@ def start_game():
         "black_token": black_token
     }
 
+
 @app.post("/join_game/{game_id}")
 def join_game(game_id: str, token: str = Query(...)):
     with get_db() as db:
-        row = db.execute("SELECT * FROM games WHERE id = ?", (game_id,)).fetchone()
+        row = db.execute("SELECT * FROM games WHERE id = ?",
+                         (game_id,)).fetchone()
         if not row:
             raise HTTPException(404, "Game not found")
 
         if token == row["white_token"]:
             if row["white_joined"] is not None:
                 raise HTTPException(400, "White already joined")
-            db.execute("UPDATE games SET white_joined = ? WHERE id = ?", ("joined", game_id))
+            db.execute(
+                "UPDATE games SET white_joined = ? WHERE id = ?", ("joined", game_id))
             return {"role": "white", "message": "White player joined"}
 
         elif token == row["black_token"]:
             if row["black_joined"] is not None:
                 raise HTTPException(400, "Black already joined")
-            db.execute("UPDATE games SET black_joined = ? WHERE id = ?", ("joined", game_id))
+            db.execute(
+                "UPDATE games SET black_joined = ? WHERE id = ?", ("joined", game_id))
             return {"role": "black", "message": "Black player joined"}
 
         else:
             raise HTTPException(403, "Invalid token")
 
+
 @app.get("/fen/{game_id}")
 def get_fen(game_id: str):
     with get_db() as db:
-        row = db.execute("SELECT fen FROM games WHERE id = ?", (game_id,)).fetchone()
+        row = db.execute("SELECT fen FROM games WHERE id = ?",
+                         (game_id,)).fetchone()
         if not row:
             raise HTTPException(404, "Game not found")
         return {"fen": row["fen"]}
+
 
 @app.post("/move/{game_id}")
 def make_move(
@@ -66,7 +75,8 @@ def make_move(
     move: str = Body(..., embed=True)  # expects { "move": "e2e4" }
 ):
     with get_db() as db:
-        row = db.execute("SELECT * FROM games WHERE id = ?", (game_id,)).fetchone()
+        row = db.execute("SELECT * FROM games WHERE id = ?",
+                         (game_id,)).fetchone()
         if not row:
             raise HTTPException(404, "Game not found")
 
@@ -96,7 +106,8 @@ def make_move(
         board.push(move_obj)
 
         # Save updated FEN
-        db.execute("UPDATE games SET fen = ? WHERE id = ?", (board.fen(), game_id))
+        db.execute("UPDATE games SET fen = ? WHERE id = ?",
+                   (board.fen(), game_id))
 
         return {
             "status": "ok",
@@ -106,10 +117,12 @@ def make_move(
             "result": board.result() if board.is_game_over() else None
         }
 
+
 @app.get("/status/{game_id}")
 def get_status(game_id: str):
     with get_db() as db:
-        row = db.execute("SELECT fen FROM games WHERE id = ?", (game_id,)).fetchone()
+        row = db.execute("SELECT fen FROM games WHERE id = ?",
+                         (game_id,)).fetchone()
         if not row:
             raise HTTPException(404, "Game not found")
 
@@ -123,13 +136,27 @@ def get_status(game_id: str):
             "result": board.result() if board.is_game_over() else None
         }
 
+
 @app.get("/board/{game_id}")
 def get_board_ascii(game_id: str):
     with get_db() as db:
-        row = db.execute("SELECT fen FROM games WHERE id = ?", (game_id,)).fetchone()
+        row = db.execute("SELECT fen FROM games WHERE id = ?",
+                         (game_id,)).fetchone()
         if not row:
             raise HTTPException(404, "Game not found")
 
         board = chess.Board(row["fen"])
         rows = str(board).splitlines()  # Split the ASCII board into 8 lines
         return {"board": rows}
+
+
+@app.delete("/game/{game_id}")
+def delete_game(game_id: str):
+    with get_db() as db:
+        row = db.execute("SELECT 1 FROM games WHERE id = ?",
+                         (game_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Game not found")
+
+        db.execute("DELETE FROM games WHERE id = ?", (game_id,))
+        return {"message": f"Game {game_id} deleted"}
