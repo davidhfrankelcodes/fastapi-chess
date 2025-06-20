@@ -6,6 +6,10 @@ from db import get_db, init_db
 app = FastAPI()
 init_db()
 
+@app.get("/")
+def root():
+    return {"message": "Welcome to your FastAPI Chess Server!"}
+
 @app.post("/start_game")
 def start_game():
     game_id = str(uuid.uuid4())
