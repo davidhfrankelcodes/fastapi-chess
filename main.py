@@ -1,38 +1,50 @@
 from fastapi import FastAPI, HTTPException
 import chess
 import uuid
+from db import get_db, init_db
 
 app = FastAPI()
+init_db()
 
-# games[username][game_id] = chess.Board()
-games = {}
-
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to your Chess API with multiple games!"}
-
-@app.post("/new_game/{username}")
-def new_game(username: str):
+@app.post("/start_game/{username}")
+def start_game(username: str):
     game_id = str(uuid.uuid4())
+    white_token = str(uuid.uuid4())
+    black_token = str(uuid.uuid4())
     board = chess.Board()
-    
-    if username not in games:
-        games[username] = {}
-    
-    games[username][game_id] = board
-    return {"username": username, "game_id": game_id, "fen": board.fen()}
 
-@app.get("/fen/{username}/{game_id}")
-def get_fen(username: str, game_id: str):
-    board = get_board_or_404(username, game_id)
-    return {"fen": board.fen()}
+    with get_db() as db:
+        db.execute("""
+        INSERT INTO games (id, fen, white_username, white_token, black_token)
+        VALUES (?, ?, ?, ?, ?)
+        """, (game_id, board.fen(), username, white_token, black_token))
 
-@app.get("/board/{username}/{game_id}")
-def get_board_ascii(username: str, game_id: str):
-    board = get_board_or_404(username, game_id)
-    return {"board": str(board)}
+    return {
+        "game_id": game_id,
+        "white_token": white_token,
+        "black_token": black_token
+    }
 
-def get_board_or_404(username: str, game_id: str) -> chess.Board:
-    if username not in games or game_id not in games[username]:
-        raise HTTPException(status_code=404, detail="Game not found.")
-    return games[username][game_id]
+@app.post("/join_game/{game_id}")
+def join_game(game_id: str, username: str, token: str):
+    with get_db() as db:
+        row = db.execute("SELECT * FROM games WHERE id = ?", (game_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Game not found")
+
+        if row["black_username"] is not None:
+            raise HTTPException(400, "Game already has a black player")
+
+        if token != row["black_token"]:
+            raise HTTPException(403, "Invalid join token")
+
+        db.execute("UPDATE games SET black_username = ? WHERE id = ?", (username, game_id))
+        return {"message": f"{username} joined as black"}
+
+@app.get("/fen/{game_id}")
+def get_fen(game_id: str):
+    with get_db() as db:
+        row = db.execute("SELECT fen FROM games WHERE id = ?", (game_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Game not found")
+        return {"fen": row["fen"]}
