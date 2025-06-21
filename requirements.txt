@@ -1,5 +1,7 @@
+aiofiles
 fastapi
-uvicorn
+jinja2
+pytest
 python-chess
 requests
-pytest
+uvicorn
