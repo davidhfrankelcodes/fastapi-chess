@@ -1,15 +1,29 @@
-from fastapi import Body, FastAPI, HTTPException, Query
-import chess
-import uuid
+from fastapi import Body, FastAPI, HTTPException, Query, Request
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+import chess, uuid
 from app.db import get_db, init_db
 
 app = FastAPI()
 init_db()
 
+# Mount a static directory (for CSS/JS if needed)
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+# Setup Jinja2 templates
+templates = Jinja2Templates(directory="app/templates")
 
 @app.get("/", include_in_schema=False)
-def root():
-    return {"message": "Welcome to your FastAPI Chess Server!"}
+async def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/game/{game_id}", include_in_schema=False)
+async def game_page(request: Request, game_id: str):
+    # Could fetch initial FEN or status here
+    return templates.TemplateResponse(
+        "game.html",
+        {"request": request, "game_id": game_id}
+    )
 
 
 @app.post("/start_game")

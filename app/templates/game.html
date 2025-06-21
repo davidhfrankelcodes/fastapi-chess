@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>Game: {{ game_id }}</h2>
+  <div id="board"></div>
+  <input id="uci" placeholder="e2e4">
+  <button id="move-btn">Move</button>
+  <pre id="status"></pre>
+
+  <script>
+  const gameId = '{{ game_id }}';
+  let token = prompt('Enter your token (white or black):');
+
+  async function refresh() {
+    const r = await fetch(`/board/${gameId}`);
+    const { board } = await r.json();
+    document.getElementById('board').innerText = board.join('\n');
+    const s = await fetch(`/status/${gameId}`);
+    document.getElementById('status').innerText = JSON.stringify(await s.json(), null, 2);
+  }
+
+  document.getElementById('move-btn').onclick = async () => {
+    const uci = document.getElementById('uci').value;
+    await fetch(`/move/${gameId}?token=${token}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ move: uci })
+    });
+    refresh();
+  };
+
+  refresh();
+  </script>
+{% endblock %}
