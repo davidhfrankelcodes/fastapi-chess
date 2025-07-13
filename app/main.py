@@ -1,4 +1,5 @@
 from fastapi import Body, FastAPI, HTTPException, Query, Request
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import chess, uuid
@@ -14,8 +15,8 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
 @app.get("/", include_in_schema=False)
-async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+async def root_redirect():
+    return RedirectResponse(url="/docs")
 
 @app.get("/game/{game_id}", include_in_schema=False)
 async def game_page(request: Request, game_id: str):
