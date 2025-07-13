@@ -1,3 +1,4 @@
+# app/db.py
 import sqlite3
 from contextlib import contextmanager
 
@@ -17,8 +18,6 @@ def init_db():
         CREATE TABLE IF NOT EXISTS games (
             id TEXT PRIMARY KEY,
             fen TEXT NOT NULL,
-            white_joined TEXT,
-            black_joined TEXT,
             white_token TEXT NOT NULL,
             black_token TEXT NOT NULL
         );

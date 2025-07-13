@@ -3,10 +3,6 @@ import requests
 def test_illegal_move_and_token(base_url, new_game):
     gid, wtk, btk = new_game
 
-    # join both players
-    requests.post(f"{base_url}/join_game/{gid}?token={wtk}")
-    requests.post(f"{base_url}/join_game/{gid}?token={btk}")
-
     # 1) Invalid token
     resp = requests.post(
         f"{base_url}/move/{gid}?token=invalid-token",

@@ -3,11 +3,6 @@ import requests
 def test_scholars_mate(base_url, new_game):
     gid, wtk, btk = new_game
 
-    # white joins
-    requests.post(f"{base_url}/join_game/{gid}?token={wtk}")
-    # black joins
-    requests.post(f"{base_url}/join_game/{gid}?token={btk}")
-
     # moves leading to Scholar's Mate
     moves = [
         ("e2e4", wtk),

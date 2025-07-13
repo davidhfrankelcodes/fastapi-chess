@@ -3,10 +3,6 @@ import requests
 def test_fools_mate(base_url, new_game):
     gid, wtk, btk = new_game
 
-    # join both players
-    requests.post(f"{base_url}/join_game/{gid}?token={wtk}")
-    requests.post(f"{base_url}/join_game/{gid}?token={btk}")
-
     # Fool's Mate sequence
     moves = [
         ("f2f3", wtk),
