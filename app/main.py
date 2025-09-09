@@ -18,6 +18,11 @@ async def root_redirect():
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
+# helper: generate a valid UUID (does NOT register a game)
+@app.get("/generate_uuid", summary="Generate a valid UUID for a future game")
+def generate_uuid():
+    return {"game_id": str(uuid.uuid4())}
+
 @app.get("/game/{game_id}", include_in_schema=False)
 async def game_page(request: Request, game_id: str):
     # auto-init on first visit if UUID is valid
